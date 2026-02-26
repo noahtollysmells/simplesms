@@ -1,52 +1,74 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>No-Websocket Chat</title>
+    <title>New Key Test</title>
     <script src="https://cdn.ably.com"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f4f7f6; }
+        #chat-container { max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        #status { font-weight: bold; margin-bottom: 10px; }
+        #messages { height: 250px; border: 1px solid #ddd; overflow-y: auto; padding: 10px; background: #fff; margin-bottom: 10px; }
+        .input-area { display: flex; gap: 5px; }
+        input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
+        button { padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:disabled { background: #6c757d; }
+    </style>
 </head>
-<body style="font-family: sans-serif; padding: 20px;">
+<body>
 
-    <h3>Status: <span id="status" style="color: orange;">Connecting...</span></h3>
-    <div id="chat" style="height: 250px; border: 1px solid #ccc; overflow-y: scroll; padding: 10px; margin-bottom: 10px;"></div>
+<div id="chat-container">
+    <h2>Restricted Chat</h2>
+    <div id="status" style="color: orange;">Connecting...</div>
+    <div id="messages"></div>
     
-    <input type="text" id="box" placeholder="Type here..." disabled>
-    <button id="btn" onclick="send()" disabled>Send</button>
+    <div class="input-area">
+        <input type="text" id="msgInput" placeholder="Type a message..." disabled>
+        <button id="sendBtn" onclick="send()" disabled>Send</button>
+    </div>
+    <p id="error-log" style="color: red; font-size: 12px; margin-top: 10px;"></p>
+</div>
 
-    <script>
-        // FORCING 'xhr_polling' (standard HTTP) to bypass firewalls
-        const options = { 
-            key: 'mQBTog.DO3Uhw:eIeE_76e_a-KhqAn1L1DC-bTTXo1na0eTylY3tY2NVE',
-            transports: ['xhr_polling'] 
-        };
+<script>
+    const statusText = document.getElementById('status');
+    const errorLog = document.getElementById('error-log');
+    const sendBtn = document.getElementById('sendBtn');
+    const msgInput = document.getElementById('msgInput');
 
-        const ably = new Ably.Realtime(options);
-        const channel = ably.channels.get('chat-room');
+    // USING YOUR NEW RESTRICTED KEY
+    const ably = new Ably.Realtime({
+        key: 'mQBTog.MoKXtg:LWXbSg8SKUBJPmkCUVVw3tLZo80uC36iv31neruN00Q',
+        transports: ['xhr_polling'] // Forces HTTP to bypass firewalls
+    });
 
-        ably.connection.on('connected', () => {
-            document.getElementById('status').innerText = "Online (via HTTP)";
-            document.getElementById('status').style.color = "green";
-            document.getElementById('box').disabled = false;
-            document.getElementById('btn').disabled = false;
-        });
+    const channel = ably.channels.get('public-chat');
 
-        ably.connection.on('failed', (err) => {
-            document.getElementById('status').innerText = "Failed: " + err.reason.message;
-            document.getElementById('status').style.color = "red";
-        });
+    ably.connection.on('connected', () => {
+        statusText.innerText = "Online (Limited Access)";
+        statusText.style.color = "green";
+        msgInput.disabled = false;
+        sendBtn.disabled = false;
+    });
 
-        channel.subscribe('msg', (m) => {
-            const chat = document.getElementById('chat');
-            chat.innerHTML += '<div>' + m.data + '</div>';
-            chat.scrollTop = chat.scrollHeight;
-        });
+    channel.subscribe('msg', (m) => {
+        const div = document.createElement('div');
+        div.innerText = m.data;
+        document.getElementById('messages').appendChild(div);
+    });
 
-        function send() {
-            const input = document.getElementById('box');
-            if(input.value.trim() !== "") {
-                channel.publish('msg', input.value);
-                input.value = '';
+    function send() {
+        const val = msgInput.value;
+        channel.publish('msg', val, (err) => {
+            if (err) {
+                // This will trigger because your key is "Subscribe only"
+                errorLog.innerText = "Error: This key doesn't have 'Publish' permission.";
+                console.error(err);
+            } else {
+                msgInput.value = '';
+                errorLog.innerText = "";
             }
-        }
-    </script>
+        });
+    }
+</script>
+
 </body>
 </html>
